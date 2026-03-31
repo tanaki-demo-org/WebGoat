@@ -1,0 +1,45 @@
+name: WebGoat CI Pipeline
+
+# Misconfiguration #1: pull_request_target is dangerous when combined
+# with code checkout from the PR branch — allows code injection
+on:
+  push:
+    branches: [ main ]
+  pull_request_target:
+    branches: [ main ]
+
+# Misconfiguration #2: Overly broad permissions
+# Should be scoped to only what's needed
+permissions: write-all
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Misconfiguration #3: Third-party Action not pinned to a commit SHA
+      # If the tag is moved maliciously, you'd run attacker code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Misconfiguration #4: Secret passed as plaintext env var
+      # Should use GitHub Secrets (${{ secrets.MY_SECRET }}) instead
+      - name: Configure environment
+        env:
+          DB_PASSWORD: SuperSecret123!
+          API_TOKEN: ghp_fakeTokenForDemopurposes1234567
+        run: |
+          echo "Configuring application..."
+          echo "Environment ready"
+
+      - name: Build with Maven
+        run: ./mvnw clean package -DskipTests
+
+      - name: Run Tests
+        run: ./mvnw test
